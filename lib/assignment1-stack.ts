@@ -25,7 +25,6 @@ export class Assignment1Stack extends cdk.Stack {
       },
     });
 
-
     table.grantReadData(getItemsLambda);
 
     // Create the API Gateway
