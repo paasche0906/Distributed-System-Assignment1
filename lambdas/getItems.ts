@@ -1,28 +1,48 @@
-import { DynamoDB } from 'aws-sdk';
-import { APIGatewayEvent } from 'aws-lambda';
+import { APIGatewayEvent } from "aws-lambda";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
-const db = new DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
+
 const TABLE_NAME = process.env.TABLE_NAME!;
 
-export async function handler(event: APIGatewayEvent) {
-  const partitionKey = event.pathParameters?.partition_key;
+export const handler = async (event: APIGatewayEvent) => {
+    console.log("Received event:", JSON.stringify(event));
 
-  if (!partitionKey) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: 'Partition key is required' }),
+    const partitionKey = event.pathParameters?.partition_key;
+
+    if (!partitionKey) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "Missing partition_key in request" }),
+        };
+    }
+
+    const params = {
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "partitionKey = :pk",
+        ExpressionAttributeValues: {
+            ":pk": partitionKey,
+        },
     };
-  }
 
-  try {
-    const result = await db.query({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'partitionKey = :pk',
-      ExpressionAttributeValues: { ':pk': partitionKey },
-    }).promise();
+    try {
+        const command = new QueryCommand(params);
+        const data = await docClient.send(command);
 
-    return { statusCode: 200, body: JSON.stringify(result.Items) };
-  } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ message: 'Error fetching data', error }) };
-  }
-}
+        return {
+            statusCode: 200,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ items: data.Items || [] }),
+        };
+    } catch (error) {
+        console.error("Error fetching items:", error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: "Could not retrieve items" }),
+        };
+    }
+};
