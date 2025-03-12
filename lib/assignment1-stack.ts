@@ -20,8 +20,11 @@ export class Assignment1Stack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'getItems.handler',
       code: lambda.Code.fromAsset('lambdas'),
-      environment: { TABLE_NAME: table.tableName },
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
     });
+
 
     table.grantReadData(getItemsLambda);
 
