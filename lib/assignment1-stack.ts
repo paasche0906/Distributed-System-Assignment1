@@ -15,7 +15,7 @@ export class Assignment1Stack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Create Lambda Functions
+    // Create Lambda Functions - GET
     const getItemsLambda = new lambda.Function(this, 'GetItemsFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'getItems.handler',
@@ -25,7 +25,17 @@ export class Assignment1Stack extends cdk.Stack {
       },
     });
 
+    // Create Lambda Functions - POST
+    const createItemLambda = new lambda.Function(this, 'CreateItemFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'createItem.handler',
+      code: lambda.Code.fromAsset('lambdas'),
+      environment: { TABLE_NAME: table.tableName },
+    });
+
+    // Give Lambda access to DynamoDB
     table.grantReadData(getItemsLambda);
+    table.grantWriteData(createItemLambda);
 
     // Create the API Gateway
     const api = new apigateway.RestApi(this, 'ServerlessApi', {
@@ -37,6 +47,9 @@ export class Assignment1Stack extends cdk.Stack {
     const itemsResource = api.root.addResource('items');
     const item = itemsResource.addResource('{partition_key}');
     item.addMethod('GET', new apigateway.LambdaIntegration(getItemsLambda));
+
+    // Add POST /items
+    itemsResource.addMethod('POST', new apigateway.LambdaIntegration(createItemLambda));
 
     // Export API Gateway endpoints
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });
