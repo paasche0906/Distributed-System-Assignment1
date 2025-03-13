@@ -55,12 +55,21 @@ export class BookManagementApiStack extends cdk.Stack {
       environment: { TABLE_NAME: bookTable.tableName },
     });
 
+    // Lambda Functions - Translation
+    const translateBookLambda = new lambda.Function(this, 'TranslateBookFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'translateBook.handler',
+      code: lambda.Code.fromAsset('lambdas'),
+      environment: { TABLE_NAME: bookTable.tableName },
+    });
+
     // Give Lambda permission to read DynamoDB.
     bookTable.grantReadData(getBookLambda);
     bookTable.grantReadData(getAllBooksLambda);
     bookTable.grantWriteData(createBookLambda);
     bookTable.grantWriteData(updateBookLambda);
     bookTable.grantWriteData(deleteBookLambda);
+    bookTable.grantWriteData(translateBookLambda);
 
     // Create the API Gateway
     const api = new apigateway.RestApi(this, 'BookManagementApi', {
@@ -81,6 +90,9 @@ export class BookManagementApiStack extends cdk.Stack {
     book.addMethod('PUT', new apigateway.LambdaIntegration(updateBookLambda));
     // Add the DELETE endpoint
     book.addMethod('DELETE', new apigateway.LambdaIntegration(deleteBookLambda));
+    // Add GET /books/{isbn}/translation endpoint
+    const bookTranslation = book.addResource('translation');
+    bookTranslation.addMethod('GET', new apigateway.LambdaIntegration(translateBookLambda));
 
     // Export API Gateway endpoints
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });
