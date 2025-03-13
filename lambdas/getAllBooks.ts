@@ -12,11 +12,13 @@ export const handler = async (event: APIGatewayEvent) => {
         const queryParams = event.queryStringParameters || {};
         const filterExpressions: string[] = [];
         const expressionAttributeValues: Record<string, any> = {};
+        const expressionAttributeNames: Record<string, string> = {};
 
         if (queryParams.author) {
             filterExpressions.push("author = :author");
             expressionAttributeValues[":author"] = queryParams.author;
         }
+
         if (queryParams.year) {
             const yearValue = Number(queryParams.year);
             if (isNaN(yearValue)) {
@@ -24,6 +26,13 @@ export const handler = async (event: APIGatewayEvent) => {
             }
             filterExpressions.push("#year = :year");
             expressionAttributeValues[":year"] = yearValue;
+            expressionAttributeNames["#year"] = "year";
+        }
+
+        if (queryParams.title) {
+            filterExpressions.push("#title = :title");
+            expressionAttributeValues[":title"] = queryParams.title;
+            expressionAttributeNames["#title"] = "title";
         }
 
         let filterExpression = filterExpressions.length > 0 ? filterExpressions.join(" AND ") : undefined;
@@ -32,7 +41,7 @@ export const handler = async (event: APIGatewayEvent) => {
             TableName: TABLE_NAME,
             FilterExpression: filterExpression,
             ExpressionAttributeValues: Object.keys(expressionAttributeValues).length ? expressionAttributeValues : undefined,
-            ExpressionAttributeNames: queryParams.year ? { "#year": "year" } : undefined,
+            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length ? expressionAttributeNames : undefined,
         });
 
         const data = await docClient.send(command);
