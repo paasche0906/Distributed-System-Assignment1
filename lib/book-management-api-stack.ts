@@ -47,11 +47,20 @@ export class BookManagementApiStack extends cdk.Stack {
       environment: { TABLE_NAME: bookTable.tableName },
     });
 
+    // Lambda Functions - Delete Book Information
+    const deleteBookLambda = new lambda.Function(this, 'DeleteBookFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'deleteBook.handler',
+      code: lambda.Code.fromAsset('lambdas'),
+      environment: { TABLE_NAME: bookTable.tableName },
+    });
+
     // Give Lambda permission to read DynamoDB.
     bookTable.grantReadData(getBookLambda);
     bookTable.grantReadData(getAllBooksLambda);
     bookTable.grantWriteData(createBookLambda);
     bookTable.grantWriteData(updateBookLambda);
+    bookTable.grantWriteData(deleteBookLambda);
 
     // Create the API Gateway
     const api = new apigateway.RestApi(this, 'BookManagementApi', {
@@ -70,6 +79,8 @@ export class BookManagementApiStack extends cdk.Stack {
     booksResource.addMethod('POST', new apigateway.LambdaIntegration(createBookLambda));
     // Add the PUT endpoint
     book.addMethod('PUT', new apigateway.LambdaIntegration(updateBookLambda));
+    // Add the DELETE endpoint
+    book.addMethod('DELETE', new apigateway.LambdaIntegration(deleteBookLambda));
 
     // Export API Gateway endpoints
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });
