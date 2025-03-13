@@ -14,6 +14,7 @@ export class BookManagementApiStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Lambda Functions:
     // Lambda Functions - GET Book Information
     const getBookLambda = new lambda.Function(this, 'GetBookFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -22,8 +23,17 @@ export class BookManagementApiStack extends cdk.Stack {
       environment: { TABLE_NAME: bookTable.tableName },
     });
 
+    // Lambda Functions - POST Book
+    const createBookLambda = new lambda.Function(this, 'CreateBookFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'createBook.handler',
+      code: lambda.Code.fromAsset('lambdas'),
+      environment: { TABLE_NAME: bookTable.tableName },
+    });
+
     // Give Lambda permission to read DynamoDB.
     bookTable.grantReadData(getBookLambda);
+    bookTable.grantWriteData(createBookLambda);
 
     // Create the API Gateway
     const api = new apigateway.RestApi(this, 'BookManagementApi', {
@@ -31,10 +41,13 @@ export class BookManagementApiStack extends cdk.Stack {
       description: 'This API allows managing books.',
     });
 
-    // Add the GET /books/{isbn} endpoint
     const booksResource = api.root.addResource('books');
     const book = booksResource.addResource('{isbn}');
+    
+    // Add the GET endpoint
     book.addMethod('GET', new apigateway.LambdaIntegration(getBookLambda));
+    // Add the POST endpoint
+    booksResource.addMethod('POST', new apigateway.LambdaIntegration(createBookLambda));
 
     // Export API Gateway endpoints
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });
