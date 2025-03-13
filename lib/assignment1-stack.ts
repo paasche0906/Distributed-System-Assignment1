@@ -4,14 +4,13 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
-export class Assignment1Stack extends cdk.Stack {
+export class BookManagementApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Create a DynamoDB table
-    const table = new dynamodb.Table(this, 'ItemsTable', {
-      partitionKey: { name: 'partitionKey', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sortKey', type: dynamodb.AttributeType.STRING },
+    // Create the DynamoDB Books table
+    const bookTable = new dynamodb.Table(this, 'BooksTable', {
+      partitionKey: { name: 'isbn', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
@@ -65,6 +64,6 @@ export class Assignment1Stack extends cdk.Stack {
     itemWithSortKey.addMethod('PUT', new apigateway.LambdaIntegration(updateItemLambda));
 
     // Export API Gateway endpoints
-    new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });
+    new cdk.CfnOutput(this, 'TableName', { value: bookTable.tableName });
   }
 }
