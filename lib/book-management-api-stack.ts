@@ -23,6 +23,14 @@ export class BookManagementApiStack extends cdk.Stack {
       environment: { TABLE_NAME: bookTable.tableName },
     });
 
+    // Lambda Functions - Get All Books
+    const getAllBooksLambda = new lambda.Function(this, 'GetAllBooksFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'getAllBooks.handler',
+      code: lambda.Code.fromAsset('lambdas'),
+      environment: { TABLE_NAME: bookTable.tableName },
+    });
+
     // Lambda Functions - POST Book Information
     const createBookLambda = new lambda.Function(this, 'CreateBookFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -31,16 +39,17 @@ export class BookManagementApiStack extends cdk.Stack {
       environment: { TABLE_NAME: bookTable.tableName },
     });
 
-      // Lambda Functions - Update Book Information
-      const updateBookLambda = new lambda.Function(this, 'UpdateBookFunction', {
-        runtime: lambda.Runtime.NODEJS_18_X,
-        handler: 'updateBook.handler',
-        code: lambda.Code.fromAsset('lambdas'),
-        environment: { TABLE_NAME: bookTable.tableName },
-      });
+    // Lambda Functions - Update Book Information
+    const updateBookLambda = new lambda.Function(this, 'UpdateBookFunction', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'updateBook.handler',
+      code: lambda.Code.fromAsset('lambdas'),
+      environment: { TABLE_NAME: bookTable.tableName },
+    });
 
     // Give Lambda permission to read DynamoDB.
     bookTable.grantReadData(getBookLambda);
+    bookTable.grantReadData(getAllBooksLambda);
     bookTable.grantWriteData(createBookLambda);
     bookTable.grantWriteData(updateBookLambda);
 
@@ -55,6 +64,8 @@ export class BookManagementApiStack extends cdk.Stack {
 
     // Add the GET endpoint
     book.addMethod('GET', new apigateway.LambdaIntegration(getBookLambda));
+    // Add GET all books endpoint
+    booksResource.addMethod('GET', new apigateway.LambdaIntegration(getAllBooksLambda));
     // Add the POST endpoint
     booksResource.addMethod('POST', new apigateway.LambdaIntegration(createBookLambda));
     // Add the PUT endpoint
