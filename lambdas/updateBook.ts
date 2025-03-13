@@ -26,20 +26,25 @@ export const handler = async (event: APIGatewayEvent) => {
         }
 
         let updateExpression = "SET ";
-        const expressionAttributes: any = {};
+        const expressionAttributeValues: Record<string, any> = {};
+        const expressionAttributeNames: Record<string, string> = {};
 
         if (title) {
-            updateExpression += "title = :title, ";
-            expressionAttributes[":title"] = title;
+            updateExpression += "#title = :title, ";
+            expressionAttributeValues[":title"] = title;
+            expressionAttributeNames["#title"] = "title";
         }
         if (author) {
-            updateExpression += "author = :author, ";
-            expressionAttributes[":author"] = author;
+            updateExpression += "#author = :author, ";
+            expressionAttributeValues[":author"] = author;
+            expressionAttributeNames["#author"] = "author";
         }
         if (year) {
-            updateExpression += "year = :year, ";
-            expressionAttributes[":year"] = year;
+            updateExpression += "#year = :year, ";
+            expressionAttributeValues[":year"] = year;
+            expressionAttributeNames["#year"] = "year";
         }
+
 
         updateExpression = updateExpression.slice(0, -2);
 
@@ -47,9 +52,10 @@ export const handler = async (event: APIGatewayEvent) => {
             TableName: TABLE_NAME,
             Key: { isbn },
             UpdateExpression: updateExpression,
-            ExpressionAttributeValues: expressionAttributes,
+            ExpressionAttributeValues: expressionAttributeValues,
+            ExpressionAttributeNames: expressionAttributeNames,
             ReturnValues: ReturnValue.ALL_NEW,
-          };
+        };
 
         const response = await docClient.send(new UpdateCommand(params));
 
