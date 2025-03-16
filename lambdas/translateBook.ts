@@ -50,11 +50,23 @@ export const handler = async (event: any) => {
         await dynamoDB.send(new UpdateItemCommand({
             TableName: tableName,
             Key: { isbn: { S: isbn } },
-            UpdateExpression: "SET translations.#lang = :translatedText",
-            ExpressionAttributeNames: { "#lang": language },
-            ExpressionAttributeValues: { ":translatedText": { S: translatedText || "" } },
+            UpdateExpression: "SET #translations = if_not_exists(#translations, :emptyMap)",
+            ExpressionAttributeNames: { "#translations": "translations" },
+            ExpressionAttributeValues: { ":emptyMap": { M: {} } },
         }));
 
+        await dynamoDB.send(new UpdateItemCommand({
+            TableName: tableName,
+            Key: { isbn: { S: isbn } },
+            UpdateExpression: "SET #translations.#lang = :translatedText",
+            ExpressionAttributeNames: {
+                "#translations": "translations",
+                "#lang": language
+            },
+            ExpressionAttributeValues: {
+                ":translatedText": { S: translatedText || "" }
+            },
+        }));
 
         return {
             statusCode: 200,
