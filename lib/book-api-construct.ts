@@ -77,7 +77,7 @@ export class BookApiConstruct extends Construct {
         bookTable.grantWriteData(deleteBookLambda);
         bookTable.grantReadData(translateBookLambda);
 
-        // 允许 Lambda 访问 Amazon Translate
+        // Allow Lambda acess Amazon Translate
         translateBookLambda.addToRolePolicy(new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: [
