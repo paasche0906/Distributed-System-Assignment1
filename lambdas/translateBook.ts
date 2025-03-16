@@ -51,14 +51,18 @@ export const handler = async (event: APIGatewayEvent) => {
 
         const translationResult = await translateClient.send(translateCommand);
         const translatedText = translationResult.TranslatedText;
-        
+
         // Update database, cache translations
         const updateCommand = new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { isbn },
-            UpdateExpression: "SET translations.#lang = :text",
-            ExpressionAttributeNames: { "#lang": targetLanguage },
+            UpdateExpression: "SET #translations.#lang = :text",
+            ExpressionAttributeNames: {
+                "#translations": "translations",
+                "#lang": targetLanguage 
+            },
             ExpressionAttributeValues: { ":text": translatedText },
+            ReturnValues: "UPDATED_NEW"
         });
 
         await docClient.send(updateCommand);
