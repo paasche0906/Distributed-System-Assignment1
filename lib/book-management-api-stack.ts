@@ -72,7 +72,6 @@ export class BookManagementApiStack extends cdk.Stack {
     bookTable.grantWriteData(deleteBookLambda);
     bookTable.grantReadWriteData(translateBookLambda);
 
-    // Give Lambda access to Amazon Translate.
     translateBookLambda.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["translate:TranslateText"],
@@ -88,6 +87,7 @@ export class BookManagementApiStack extends cdk.Stack {
 
     const booksResource = api.root.addResource('books');
     const book = booksResource.addResource('{isbn}');
+    const translation = book.addResource('translation');
 
     // Add the GET endpoint
     book.addMethod('GET', new apigateway.LambdaIntegration(getBookLambda));
@@ -99,9 +99,8 @@ export class BookManagementApiStack extends cdk.Stack {
     book.addMethod('PUT', new apigateway.LambdaIntegration(updateBookLambda));
     // Add the DELETE endpoint
     book.addMethod('DELETE', new apigateway.LambdaIntegration(deleteBookLambda));
-    // Add GET /books/{isbn}/translation endpoint
-    const bookTranslation = book.addResource('translation');
-    bookTranslation.addMethod('GET', new apigateway.LambdaIntegration(translateBookLambda));
+     // Bound translation API
+     translation.addMethod('GET', new apigateway.LambdaIntegration(translateBookLambda));
 
     // Export API Gateway endpoints
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });

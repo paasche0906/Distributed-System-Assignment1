@@ -8,80 +8,73 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const translateClient = new TranslateClient({});
 
 const TABLE_NAME = process.env.TABLE_NAME!;
+const TEXT_ATTRIBUTE = "description";
 
 export const handler = async (event: APIGatewayEvent) => {
     try {
-        const isbn = event.pathParameters?.isbn;
+        const partitionKey = event.pathParameters?.partition_key;
+        const sortKey = event.pathParameters?.sort_key;
         const targetLanguage = event.queryStringParameters?.language;
 
-        if (!isbn || !targetLanguage) {
-            return { statusCode: 400, body: JSON.stringify({ error: "Missing ISBN or target language" }) };
+        if (!partitionKey || !sortKey || !targetLanguage) {
+            return { statusCode: 400, body: JSON.stringify({ error: "Missing required parameters" }) };
         }
 
-        // Check if the translation cache is already in the database
-        const getCommand = new GetCommand({
+        // Checking if DynamoDB has cached translations
+        const getItemCommand = new GetCommand({
             TableName: TABLE_NAME,
-            Key: { isbn },
+            Key: { partitionKey, sortKey }
         });
+        const result = await docClient.send(getItemCommand);
 
-        const data = await docClient.send(getCommand);
-        if (!data.Item) {
-            return { statusCode: 404, body: JSON.stringify({ error: "Book not found" }) };
+        if (!result.Item) {
+            return { statusCode: 404, body: JSON.stringify({ error: "Item not found" }) };
         }
 
-        // Make sure `description` exists
-        if (!data.Item.description || data.Item.description.trim() === "") {
-            return { statusCode: 400, body: JSON.stringify({ error: "Book description is missing or empty" }) };
-        }
-
-        // Check if there is already a translation cache
-        if (data.Item.translations && data.Item.translations[targetLanguage]) {
+        // Checking for existing translations
+        const translations = result.Item.translations || {};
+        if (translations[targetLanguage]) {
             return {
                 statusCode: 200,
-                body: JSON.stringify({ translation: data.Item.translations[targetLanguage] }),
+                body: JSON.stringify({ translation: translations[targetLanguage] })
             };
         }
 
         // Call Amazon Translate
+        const textToTranslate = result.Item[TEXT_ATTRIBUTE];
+        if (!textToTranslate) {
+            return { statusCode: 400, body: JSON.stringify({ error: `${TEXT_ATTRIBUTE} is missing or empty` }) };
+        }
+
         const translateCommand = new TranslateTextCommand({
-            Text: data.Item.description,
             SourceLanguageCode: "en",
             TargetLanguageCode: targetLanguage,
+            Text: textToTranslate
         });
-
         const translationResult = await translateClient.send(translateCommand);
         const translatedText = translationResult.TranslatedText;
 
-        // Update database, cache translations
+        // Updating the DynamoDB Cache Translation
         const updateCommand = new UpdateCommand({
             TableName: TABLE_NAME,
-            Key: { isbn },
-            UpdateExpression: "SET #translations = if_not_exists(#translations, :emptyMap), #translations.#lang = :text",
-            ExpressionAttributeNames: { 
-                "#translations": "translations",  
-                "#lang": targetLanguage
-            },
-            ExpressionAttributeValues: { 
-                ":text": translatedText,
-                ":emptyMap": {}
-            },
+            Key: { partitionKey, sortKey },
+            UpdateExpression: "SET translations.#lang = :text",
+            ExpressionAttributeNames: { "#lang": targetLanguage },
+            ExpressionAttributeValues: { ":text": translatedText },
             ReturnValues: "UPDATED_NEW"
         });
-        
-
         await docClient.send(updateCommand);
 
-        return { statusCode: 200, body: JSON.stringify({ translation: translatedText }) };
+        // Return to Translation Results
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ translation: translatedText })
+        };
     } catch (error) {
         console.error("Translation error:", error);
-
         return {
             statusCode: 500,
-            body: JSON.stringify({
-                error: "Translation failed",
-                details: error instanceof Error ? error.message : "Unknown error"
-            }),
+            body: JSON.stringify({ error: "Translation failed", details: (error as Error).message })
         };
     }
-
 };
