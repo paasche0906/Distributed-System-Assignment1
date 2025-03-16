@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from 'constructs';
 
 export class BookManagementApiStack extends cdk.Stack {
@@ -69,7 +70,15 @@ export class BookManagementApiStack extends cdk.Stack {
     bookTable.grantWriteData(createBookLambda);
     bookTable.grantWriteData(updateBookLambda);
     bookTable.grantWriteData(deleteBookLambda);
-    bookTable.grantWriteData(translateBookLambda);
+    bookTable.grantReadWriteData(translateBookLambda);
+
+    // Give Lambda access to Amazon Translate.
+    translateBookLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["translate:TranslateText"],
+        resources: ["*"],
+      })
+    );
 
     // Create the API Gateway
     const api = new apigateway.RestApi(this, 'BookManagementApi', {
