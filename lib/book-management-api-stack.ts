@@ -89,27 +89,58 @@ export class BookManagementApiStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'BookManagementApi', {
       restApiName: 'Book Management Service',
       description: 'This API allows managing books.',
+      deployOptions: {
+        stageName: "prod"
+      }
     });
+
+    // Create the API Key
+    const apiKey = api.addApiKey("BookManagementApiKey", {
+      apiKeyName: "BookManagementApiKey",
+      description: "API Key for protected endpoints"
+    });
+
+    // Create a Usage Plan and associate an API Key
+    const usagePlan = api.addUsagePlan("BookManagementUsagePlan", {
+      name: "BookManagementUsagePlan",
+      description: "Usage plan for API Key",
+      throttle: {
+        rateLimit: 10,
+        burstLimit: 20,
+      },
+    });
+    usagePlan.addApiStage({
+      stage: api.deploymentStage,
+    });
+    usagePlan.addApiKey(apiKey);
 
     const booksResource = api.root.addResource('books');
     const book = booksResource.addResource('{isbn}');
+    const translationResource = book.addResource('translation');
 
+    // Protected Lambda Endpoint Integration
+    const protectedMethodOptions = {
+      apiKeyRequired: true,
+    };
+
+    // Open endpoints
     // Add the GET endpoint
     book.addMethod('GET', new apigateway.LambdaIntegration(getBookLambda));
     // Add GET all books endpoint
     booksResource.addMethod('GET', new apigateway.LambdaIntegration(getAllBooksLambda));
-    // Add the POST endpoint
-    booksResource.addMethod('POST', new apigateway.LambdaIntegration(createBookLambda));
-    // Add the PUT endpoint
-    book.addMethod('PUT', new apigateway.LambdaIntegration(updateBookLambda));
-    // Add the DELETE endpoint
-    book.addMethod('DELETE', new apigateway.LambdaIntegration(deleteBookLambda));
     // API Gateway - New translation endpoint
-    const translationResource = book.addResource('translation');
     translationResource.addMethod('GET', new apigateway.LambdaIntegration(translateBookLambda));
 
+    // Protected endpoint (requires API Key)
+    // Add the POST endpoint
+    booksResource.addMethod('POST', new apigateway.LambdaIntegration(createBookLambda), protectedMethodOptions);
+    // Add the PUT endpoint
+    book.addMethod('PUT', new apigateway.LambdaIntegration(updateBookLambda), protectedMethodOptions);
+    // Add the DELETE endpoint
+    book.addMethod('DELETE', new apigateway.LambdaIntegration(deleteBookLambda), protectedMethodOptions);
 
     // Export API Gateway endpoints
+    new cdk.CfnOutput(this, "APIKey", { value: apiKey.keyId });
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: api.url! });
   }
 }
