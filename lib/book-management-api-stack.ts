@@ -13,6 +13,8 @@ export class BookManagementApiStack extends cdk.Stack {
     const bookTable = new dynamodb.Table(this, 'BooksTable', {
       partitionKey: { name: 'isbn', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // Use per-request billing to avoid high costs
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
     // Lambda Functions:
