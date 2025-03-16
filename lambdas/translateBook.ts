@@ -56,17 +56,17 @@ export const handler = async (event: APIGatewayEvent) => {
         const updateCommand = new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { isbn },
-            UpdateExpression: "SET #translations = if_not_exists(#translations, :emptyMap), #translations.#lang = :text",
+            UpdateExpression: "SET #translations.#lang = :text",
             ExpressionAttributeNames: {
                 "#translations": "translations",
-                "#lang": targetLanguage 
+                "#lang": targetLanguage
             },
             ExpressionAttributeValues: {
-                ":text": translatedText,
-                ":emptyMap": {}
+                ":text": translatedText
             },
             ReturnValues: "UPDATED_NEW"
         });
+
 
 
         await docClient.send(updateCommand);
