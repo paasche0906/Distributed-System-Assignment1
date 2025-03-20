@@ -15,6 +15,7 @@ export class BookApiConstruct extends Construct {
         const bookTable = new dynamodb.Table(this, 'BooksTable', {
             partitionKey: { name: 'isbn', type: dynamodb.AttributeType.STRING },
             removalPolicy: cdk.RemovalPolicy.DESTROY,
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST, 
         });
 
         // Lambda Role
